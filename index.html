@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MotionGuard</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0f0f0f;
+      color: #f0f0f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+
+    h1 {
+      font-size: 1.6rem;
+      font-weight: 500;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.25rem;
+      color: #fff;
+    }
+
+    .subtitle {
+      font-size: 0.875rem;
+      color: #888;
+      margin-bottom: 2rem;
+    }
+
+    .card {
+      background: #1a1a1a;
+      border: 0.5px solid #2e2e2e;
+      border-radius: 16px;
+      padding: 1.5rem;
+      width: 100%;
+      max-width: 520px;
+    }
+
+    .video-wrap {
+      position: relative;
+      width: 100%;
+      border-radius: 10px;
+      overflow: hidden;
+      background: #000;
+      aspect-ratio: 4/3;
+      margin-bottom: 1.25rem;
+    }
+
+    video, canvas {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      object-fit: cover;
+    }
+
+    canvas { opacity: 0; pointer-events: none; }
+
+    .overlay-badge {
+      position: absolute;
+      top: 10px; left: 10px;
+      background: rgba(0,0,0,0.6);
+      border: 0.5px solid rgba(255,255,255,0.1);
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-size: 12px;
+      color: #aaa;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: #555;
+      transition: background 0.3s;
+    }
+    .dot.active { background: #22c55e; }
+    .dot.alert  { background: #ef4444; }
+
+    .controls {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 1.25rem;
+    }
+
+    .ctrl-box {
+      background: #111;
+      border: 0.5px solid #2e2e2e;
+      border-radius: 10px;
+      padding: 10px 14px;
+    }
+
+    .ctrl-label {
+      font-size: 11px;
+      color: #666;
+      margin-bottom: 6px;
+    }
+
+    .ctrl-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    input[type=range] {
+      flex: 1;
+      -webkit-appearance: none;
+      height: 4px;
+      background: #333;
+      border-radius: 2px;
+      outline: none;
+    }
+
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px; height: 14px;
+      border-radius: 50%;
+      background: #fff;
+      cursor: pointer;
+    }
+
+    .ctrl-val {
+      font-size: 13px;
+      font-weight: 500;
+      color: #fff;
+      min-width: 30px;
+      text-align: right;
+    }
+
+    .url-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 1.25rem;
+    }
+
+    .url-row label {
+      font-size: 12px;
+      color: #666;
+      white-space: nowrap;
+    }
+
+    .url-row input[type=text] {
+      flex: 1;
+      background: #111;
+      border: 0.5px solid #2e2e2e;
+      border-radius: 8px;
+      padding: 7px 12px;
+      font-size: 13px;
+      color: #fff;
+      outline: none;
+    }
+
+    .url-row input[type=text]:focus {
+      border-color: #555;
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 10px;
+    }
+
+    button {
+      flex: 1;
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      border: 0.5px solid #2e2e2e;
+      transition: opacity 0.15s, background 0.15s;
+    }
+
+    #startBtn {
+      background: #fff;
+      color: #0f0f0f;
+      border-color: #fff;
+    }
+
+    #startBtn:hover { opacity: 0.85; }
+
+    #stopBtn {
+      background: transparent;
+      color: #aaa;
+    }
+
+    #stopBtn:hover { background: #222; }
+
+    .status-bar {
+      margin-top: 1.25rem;
+      padding: 10px 14px;
+      background: #111;
+      border: 0.5px solid #2e2e2e;
+      border-radius: 10px;
+      font-size: 13px;
+      color: #888;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .status-bar span { color: #fff; font-weight: 500; }
+
+    .alert-banner {
+      display: none;
+      margin-top: 1.25rem;
+      padding: 14px;
+      background: #2a0e0e;
+      border: 0.5px solid #7f1d1d;
+      border-radius: 10px;
+      font-size: 13px;
+      color: #fca5a5;
+      text-align: center;
+    }
+
+    .alert-banner .countdown {
+      font-size: 2rem;
+      font-weight: 500;
+      color: #ef4444;
+      display: block;
+      margin: 6px 0;
+    }
+
+    .cancel-btn {
+      margin-top: 8px;
+      background: transparent;
+      border: 0.5px solid #7f1d1d;
+      color: #fca5a5;
+      padding: 6px 20px;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+      flex: none;
+      width: auto;
+    }
+
+    .cancel-btn:hover { background: #3d1010; }
+
+    .motion-bar-wrap {
+      margin-top: 1.25rem;
+    }
+
+    .bar-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      color: #555;
+      margin-bottom: 5px;
+    }
+
+    .bar-bg {
+      height: 6px;
+      background: #222;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%;
+      width: 0%;
+      background: #22c55e;
+      border-radius: 3px;
+      transition: width 0.1s, background 0.1s;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>MotionGuard</h1>
+  <p class="subtitle">Detects motion via webcam — redirects to your homepage</p>
+
+  <div class="card">
+
+    <div class="video-wrap">
+      <video id="video" autoplay muted playsinline></video>
+      <canvas id="canvas"></canvas>
+      <div class="overlay-badge">
+        <div class="dot" id="dot"></div>
+        <span id="statusText">Idle</span>
+      </div>
+    </div>
+
+    <div class="controls">
+      <div class="ctrl-box">
+        <div class="ctrl-label">Sensitivity</div>
+        <div class="ctrl-row">
+          <input type="range" id="sensitivity" min="5" max="80" value="30" step="1" />
+          <span class="ctrl-val" id="sensVal">30</span>
+        </div>
+      </div>
+      <div class="ctrl-box">
+        <div class="ctrl-label">Redirect delay (sec)</div>
+        <div class="ctrl-row">
+          <input type="range" id="delay" min="1" max="15" value="5" step="1" />
+          <span class="ctrl-val" id="delayVal">5</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="url-row">
+      <label>Redirect to</label>
+      <input type="text" id="homeUrl" value="https://www.google.com" placeholder="https://yoursite.com" />
+    </div>
+
+    <div class="btn-row">
+      <button id="startBtn" onclick="startGuard()">Start monitoring</button>
+      <button id="stopBtn" onclick="stopGuard()">Stop</button>
+    </div>
+
+    <div class="motion-bar-wrap">
+      <div class="bar-label">
+        <span>Motion level</span>
+        <span id="motionPct">0%</span>
+      </div>
+      <div class="bar-bg">
+        <div class="bar-fill" id="barFill"></div>
+      </div>
+    </div>
+
+    <div class="status-bar">
+      <span>State</span>
+      <span id="stateLabel">Stopped</span>
+    </div>
+
+    <div class="alert-banner" id="alertBanner">
+      Motion detected! Redirecting in
+      <span class="countdown" id="countdownNum">5</span>
+      seconds
+      <br />
+      <button class="cancel-btn" onclick="cancelRedirect()">Cancel</button>
+    </div>
+
+  </div>
+
+  <script>
+    let stream = null;
+    let animFrame = null;
+    let prevFrame = null;
+    let monitoring = false;
+    let motionLocked = false;
+    let countdownInterval = null;
+    let countdownVal = 5;
+
+    const video    = document.getElementById('video');
+    const canvas   = document.getElementById('canvas');
+    const ctx      = canvas.getContext('2d', { willReadFrequently: true });
+    const dot      = document.getElementById('dot');
+    const statusTx = document.getElementById('statusText');
+    const stateL   = document.getElementById('stateLabel');
+    const alertB   = document.getElementById('alertBanner');
+    const countN   = document.getElementById('countdownNum');
+    const barFill  = document.getElementById('barFill');
+    const motionP  = document.getElementById('motionPct');
+    const sensSlider  = document.getElementById('sensitivity');
+    const delaySlider = document.getElementById('delay');
+
+    document.getElementById('sensVal').textContent = sensSlider.value;
+    document.getElementById('delayVal').textContent = delaySlider.value;
+
+    sensSlider.oninput  = () => document.getElementById('sensVal').textContent  = sensSlider.value;
+    delaySlider.oninput = () => document.getElementById('delayVal').textContent = delaySlider.value;
+
+    async function startGuard() {
+      if (monitoring) return;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: { width: 320, height: 240 }, audio: false });
+        video.srcObject = stream;
+        await video.play();
+        monitoring = true;
+        prevFrame = null;
+        motionLocked = false;
+        dot.className = 'dot active';
+        statusTx.textContent = 'Watching';
+        stateL.textContent = 'Active';
+        detect();
+      } catch (e) {
+        alert('Camera access denied or unavailable. Please allow camera permissions.');
+      }
+    }
+
+    function stopGuard() {
+      monitoring = false;
+      cancelRedirect();
+      if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+      if (animFrame) { cancelAnimationFrame(animFrame); animFrame = null; }
+      prevFrame = null;
+      dot.className = 'dot';
+      statusTx.textContent = 'Idle';
+      stateL.textContent = 'Stopped';
+      barFill.style.width = '0%';
+      motionP.textContent = '0%';
+      alertB.style.display = 'none';
+    }
+
+    function detect() {
+      if (!monitoring) return;
+
+      canvas.width  = video.videoWidth  || 320;
+      canvas.height = video.videoHeight || 240;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      const current = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+      if (prevFrame) {
+        const sensitivity = parseInt(sensSlider.value);
+        const threshold   = sensitivity;
+        const data1 = prevFrame.data;
+        const data2 = current.data;
+        let changed = 0;
+        const total = data1.length / 4;
+
+        for (let i = 0; i < data1.length; i += 4) {
+          const dr = Math.abs(data1[i]   - data2[i]);
+          const dg = Math.abs(data1[i+1] - data2[i+1]);
+          const db = Math.abs(data1[i+2] - data2[i+2]);
+          if ((dr + dg + db) / 3 > threshold) changed++;
+        }
+
+        const pct = Math.round((changed / total) * 100);
+        const displayPct = Math.min(pct * 3, 100);
+        barFill.style.width = displayPct + '%';
+        barFill.style.background = displayPct > 60 ? '#ef4444' : displayPct > 30 ? '#f59e0b' : '#22c55e';
+        motionP.textContent = pct + '%';
+
+        const motionDetected = pct > 3;
+
+        if (motionDetected && !motionLocked) {
+          triggerAlert();
+        }
+      }
+
+      prevFrame = current;
+      animFrame = requestAnimationFrame(detect);
+    }
+
+    function triggerAlert() {
+      motionLocked = true;
+      dot.className = 'dot alert';
+      statusTx.textContent = 'Motion!';
+      stateL.textContent = 'Motion detected';
+      alertB.style.display = 'block';
+      countdownVal = parseInt(delaySlider.value);
+      countN.textContent = countdownVal;
+
+      countdownInterval = setInterval(() => {
+        countdownVal--;
+        countN.textContent = countdownVal;
+        if (countdownVal <= 0) {
+          clearInterval(countdownInterval);
+          redirect();
+        }
+      }, 1000);
+    }
+
+    function cancelRedirect() {
+      if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
+      motionLocked = false;
+      alertB.style.display = 'none';
+      if (monitoring) {
+        dot.className = 'dot active';
+        statusTx.textContent = 'Watching';
+        stateL.textContent = 'Active';
+      }
+    }
+
+    function redirect() {
+      let url = document.getElementById('homeUrl').value.trim();
+      if (!url.startsWith('http')) url = 'https://' + url;
+      window.location.href = url;
+    }
+  </script>
+
+</body>
+</html>
